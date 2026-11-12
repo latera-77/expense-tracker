@@ -34,11 +34,30 @@ router.post("/", async (req, res) => {
 
 
 router.get("/", async (req, res) => {
+    const {month,category} = req.query;
+
+    let dateFilter ={};
+    if (typeof month === "string"){
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      res.status(400).json({ message: "month must look like 2026-11" });
+      return;
+    }
+    const [year, mon] = month.split("-").map(Number);
+    dateFilter = {
+        date: {
+            gte: new Date(Date.UTC(year, mon - 1, 1)),
+            lt: new Date(Date.UTC(year, mon, 1)),
+        },
+    };
+}
     const expenses = await prisma.expense.findMany({
-        where: { userId: req.userId as number },
+        where: {
+            userId: req.userId as number,
+            ...dateFilter,
+            ...(typeof category === "string" ? { category } : {}),
+        },
         orderBy: { date: "desc" },
     });
-
     res.json(expenses);
 });
 
