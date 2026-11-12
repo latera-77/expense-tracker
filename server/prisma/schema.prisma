@@ -17,4 +17,19 @@ model User {
   email        String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
+  expenses     Expense[]
+}
+
+
+model Expense{
+  id        Int        @id @default(autoincrement())
+  amount    Decimal    @db.Decimal(10,2)
+  category  String 
+  note      String?
+  date      DateTime   @default(now())
+  createdAt DateTime   @default(now())
+  userId    Int 
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
