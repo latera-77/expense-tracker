@@ -66,6 +66,24 @@ function parseId(value:unknown): number | null {
     return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+
+router.get("/summary", async (req, res) => {
+  const totals = await prisma.expense.groupBy({
+    by: ["category"],
+    where: { userId: req.userId as number },
+    _sum: { amount: true },
+    orderBy: { _sum: { amount: "desc" } },
+  });
+
+  res.json(
+    totals.map((t) => ({
+      category: t.category,
+      total: t._sum.amount,
+    }))
+  );
+});
+
+
 router.get("/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) {
