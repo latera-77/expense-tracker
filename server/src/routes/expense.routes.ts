@@ -25,7 +25,7 @@ router.post("/", async (req, res) => {
     const expense = await prisma.expense.create({
         data: {
             ...result.data,
-            userId: req.user.id as number,
+            userId: req.userId as number,
         },
     });
 
@@ -35,11 +35,76 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
     const expenses = await prisma.expense.findMany({
-        where: { userId: req.user.id as number },
+        where: { userId: req.userId as number },
         orderBy: { date: "desc" },
     });
 
     res.json(expenses);
 });
+
+function parseId(value:unknown): number | null {
+    const id = Number(value);
+    return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+router.get("/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        res.status(400).json({ message: "Invalid id" });
+        return;
+    }
+
+    const expense = await prisma.expense.findFirst({
+        where: { id, userId: req.userId as number },
+    }); 
+
+    if (!expense) {
+        res.status(404).json({ message: "Expense not found" });
+        return;
+    }
+
+    res.json(expense);
+});
+
+router.put("/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        res.status(400).json({ message: "Invalid id" });
+        return;
+    }
+
+    const result = expenseSchema.safeParse(req.body);
+    if (!result.success) {
+        res.status(400).json({ message: "Invalid expense data" });
+        return;
+    }
+
+    const updated = await prisma.expense.update({
+        where: { id },
+        data: result.data,
+    });
+
+    res.json(updated);
+});
+
+router.delete("/:id", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) {
+        res.status(400).json({ message: "Invalid id" });
+        return;
+    }
+
+    const existing = await prisma.expense.findFirst({
+        where: { id, userId: req.userId as number },
+    });
+    if (!existing) {
+        res.status(404).json({ message: "Expense not found" });
+        return;
+    }
+
+    await prisma.expense.delete({ where: { id } });
+    res.status(204).send();
+});
+
 
 export default router;
