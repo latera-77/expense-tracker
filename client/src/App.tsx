@@ -1,3 +1,11 @@
+import { Routes, Route } from "react-router-dom";
+import LoginPage from "./pages/LoginPage";
+
 export default function App() {
-  return <h1 className="p-6 text-3xl font-bold text-blue-600">Expense Tracker</h1>;
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<p className="p-6">Home placeholder</p>} />
+    </Routes>
+  );
 }
