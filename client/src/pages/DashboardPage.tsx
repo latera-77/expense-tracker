@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { ApiError } from "../lib/api";
-import { getExpenses } from "../lib/expenses";
+import { deleteExpense, getExpenses } from "../lib/expenses";
 import type { Expense } from "../types";
 import ExpenseList from "../components/ExpenseList";
 import ExpenseForm from "../components/ExpenseForm";
@@ -10,7 +10,8 @@ export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -21,7 +22,7 @@ export default function DashboardPage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "Could not load expenses");
+          setLoadError(err instanceof ApiError ? err.message : "Could not load expenses");
         }
       })
       .finally(() => {
@@ -39,6 +40,18 @@ export default function DashboardPage() {
         (a, b) => b.date.localeCompare(a.date) || b.id - a.id
       )
     );
+  }
+
+  async function handleDelete(id: number) {
+    if (!window.confirm("Delete this expense?")) return;
+
+    setActionError("");
+    try {
+      await deleteExpense(id);
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Could not delete expense");
+    }
   }
 
   return (
@@ -62,10 +75,15 @@ export default function DashboardPage() {
         <ExpenseForm onCreated={handleCreated} />
 
         {loading && <p>Loading...</p>}
-        {error && (
-          <p className="rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>
+        {loadError && (
+          <p className="rounded bg-red-50 p-2 text-sm text-red-700">{loadError}</p>
         )}
-        {!loading && !error && <ExpenseList expenses={expenses} />}
+        {actionError && (
+          <p className="rounded bg-red-50 p-2 text-sm text-red-700">{actionError}</p>
+        )}
+        {!loading && !loadError && (
+          <ExpenseList expenses={expenses} onDelete={handleDelete} />
+        )}
       </main>
     </div>
   );
