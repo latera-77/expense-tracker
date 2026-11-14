@@ -4,6 +4,7 @@ import { ApiError } from "../lib/api";
 import { getExpenses } from "../lib/expenses";
 import type { Expense } from "../types";
 import ExpenseList from "../components/ExpenseList";
+import ExpenseForm from "../components/ExpenseForm";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -32,6 +33,14 @@ export default function DashboardPage() {
     };
   }, []);
 
+  function handleCreated(expense: Expense) {
+    setExpenses((prev) =>
+      [...prev, expense].sort(
+        (a, b) => b.date.localeCompare(a.date) || b.id - a.id
+      )
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
@@ -50,6 +59,8 @@ export default function DashboardPage() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-4 p-4">
+        <ExpenseForm onCreated={handleCreated} />
+
         {loading && <p>Loading...</p>}
         {error && (
           <p className="rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>
