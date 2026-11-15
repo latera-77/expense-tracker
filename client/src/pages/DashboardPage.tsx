@@ -1,29 +1,35 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { ApiError } from "../lib/api";
-import { deleteExpense, getExpenses } from "../lib/expenses";
-import type { Expense } from "../types";
+import { deleteExpense, getExpenses, getSummary } from "../lib/expenses";
+import type { CategoryTotal, Expense, ExpenseFilters } from "../types";
 import ExpenseList from "../components/ExpenseList";
 import ExpenseForm from "../components/ExpenseForm";
+import ExpenseFiltersBar from "../components/ExpenseFilters";
 
-function sortExpenses(list: Expense[]) {
-  return [...list].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
-}
+const NO_FILTERS: ExpenseFilters = { month: "", category: "" };
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [summary, setSummary] = useState<CategoryTotal[]>([]);
+  const [filters, setFilters] = useState<ExpenseFilters>(NO_FILTERS);
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [refresh, setRefresh] = useState(0); // bump this to reload from the server
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
 
+  // Reload the list whenever the filters change or something was saved/deleted
   useEffect(() => {
     let cancelled = false;
 
-    getExpenses()
+    getExpenses(filters)
       .then((data) => {
-        if (!cancelled) setExpenses(data);
+        if (!cancelled) {
+          setExpenses(data);
+          setLoadError("");
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -37,14 +43,34 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [filters, refresh]);
 
-  // Works for both new and edited expenses: drop any old copy, add the saved one
-  function handleSaved(saved: Expense) {
-    setExpenses((prev) =>
-      sortExpenses([...prev.filter((e) => e.id !== saved.id), saved])
-    );
+  // Category totals: used for the dropdown now and the chart next
+  useEffect(() => {
+    let cancelled = false;
+
+    getSummary()
+      .then((data) => {
+        if (!cancelled) setSummary(data);
+      })
+      .catch(() => {
+        // not critical: the dropdown and chart just stay empty
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refresh]);
+
+  function handleFilterChange(next: ExpenseFilters) {
+    setLoading(true);
+    setLoadError("");
+    setFilters(next);
+  }
+
+  function handleSaved() {
     setEditing(null);
+    setRefresh((r) => r + 1);
   }
 
   function handleEdit(expense: Expense) {
@@ -58,8 +84,8 @@ export default function DashboardPage() {
     setActionError("");
     try {
       await deleteExpense(id);
-      setExpenses((prev) => prev.filter((e) => e.id !== id));
       if (editing?.id === id) setEditing(null);
+      setRefresh((r) => r + 1);
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Could not delete expense");
     }
@@ -88,6 +114,12 @@ export default function DashboardPage() {
           expense={editing}
           onSaved={handleSaved}
           onCancel={editing ? () => setEditing(null) : undefined}
+        />
+
+        <ExpenseFiltersBar
+          filters={filters}
+          categories={summary.map((s) => s.category)}
+          onChange={handleFilterChange}
         />
 
         {loading && <p>Loading...</p>}

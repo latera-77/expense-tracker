@@ -20,3 +20,13 @@ export type ExpenseInput = {
   note?: string;
   date?: string;
 };
+
+export type ExpenseFilters = {
+  month: string; // "" or "2026-11"
+  category: string; // "" or an exact category name
+};
+
+export type CategoryTotal = {
+  category: string;
+  total: string | null; // Decimal as string
+};

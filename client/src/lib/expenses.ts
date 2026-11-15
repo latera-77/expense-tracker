@@ -1,7 +1,22 @@
 import { api } from "./api";
-import type { Expense, ExpenseInput } from "../types";
+import type {
+  CategoryTotal,
+  Expense,
+  ExpenseFilters,
+  ExpenseInput,
+} from "../types";
 
-export const getExpenses = () => api<Expense[]>("/api/expenses");
+export function getExpenses(filters: ExpenseFilters = { month: "", category: "" }) {
+  const params = new URLSearchParams();
+  if (filters.month) params.set("month", filters.month);
+  if (filters.category) params.set("category", filters.category);
+
+  const query = params.toString();
+  return api<Expense[]>(`/api/expenses${query ? `?${query}` : ""}`);
+}
+
+export const getSummary = () =>
+  api<CategoryTotal[]>("/api/expenses/summary");
 
 export const createExpense = (input: ExpenseInput) =>
   api<Expense>("/api/expenses", {
@@ -9,12 +24,11 @@ export const createExpense = (input: ExpenseInput) =>
     body: JSON.stringify(input),
   });
 
-export const deleteExpense = (id: number) =>
-  api<void>(`/api/expenses/${id}`, { method: "DELETE" });
-
-
 export const updateExpense = (id: number, input: ExpenseInput) =>
   api<Expense>(`/api/expenses/${id}`, {
     method: "PUT",
     body: JSON.stringify(input),
   });
+
+export const deleteExpense = (id: number) =>
+  api<void>(`/api/expenses/${id}`, { method: "DELETE" });
