@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { ApiError } from "../lib/api";
 import { deleteExpense, getExpenses, getSummary } from "../lib/expenses";
+import { formatAmount, sumAmounts } from "../lib/format";
 import type { CategoryTotal, Expense, ExpenseFilters } from "../types";
 import ExpenseList from "../components/ExpenseList";
 import ExpenseForm from "../components/ExpenseForm";
@@ -16,12 +17,11 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<CategoryTotal[]>([]);
   const [filters, setFilters] = useState<ExpenseFilters>(NO_FILTERS);
   const [editing, setEditing] = useState<Expense | null>(null);
-  const [refresh, setRefresh] = useState(0); // bump this to reload from the server
+  const [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
 
-  // Reload the list whenever the filters change or something was saved/deleted
   useEffect(() => {
     let cancelled = false;
 
@@ -46,7 +46,6 @@ export default function DashboardPage() {
     };
   }, [filters, refresh]);
 
-  // Category totals: used for the dropdown now and the chart next
   useEffect(() => {
     let cancelled = false;
 
@@ -92,6 +91,8 @@ export default function DashboardPage() {
     }
   }
 
+  const total = sumAmounts(expenses.map((e) => e.amount));
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
@@ -117,13 +118,6 @@ export default function DashboardPage() {
           onCancel={editing ? () => setEditing(null) : undefined}
         />
 
-                <ExpenseForm
-          key={editing?.id ?? "new"}
-          expense={editing}
-          onSaved={handleSaved}
-          onCancel={editing ? () => setEditing(null) : undefined}
-        />
-
         <SummaryChart summary={summary} />
 
         <ExpenseFiltersBar
@@ -140,11 +134,22 @@ export default function DashboardPage() {
           <p className="rounded bg-red-50 p-2 text-sm text-red-700">{actionError}</p>
         )}
         {!loading && !loadError && (
-          <ExpenseList
-            expenses={expenses}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+          <>
+            <div className="flex items-center justify-between rounded bg-white p-4 shadow">
+              <span className="text-sm text-gray-500">
+                {expenses.length} expense{expenses.length === 1 ? "" : "s"} shown
+              </span>
+              <span className="text-lg font-semibold">
+                Total: {formatAmount(total)}
+              </span>
+            </div>
+
+            <ExpenseList
+              expenses={expenses}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          </>
         )}
       </main>
     </div>

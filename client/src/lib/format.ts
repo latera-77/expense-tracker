@@ -13,3 +13,11 @@ export function formatDate(iso: string): string {
     timeZone: "UTC",
   });
 }
+
+export function sumAmounts(amounts: (string | number)[]): number {
+  const cents = amounts.reduce<number>(
+    (sum, a) => sum + Math.round(Number(a) * 100),
+    0
+  );
+  return cents / 100;
+}
