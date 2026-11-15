@@ -1,38 +1,53 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export class ApiError extends Error {
-    status: number;
+  status: number;
 
-    constructor(status: number, message: string) {
-        super(message);
-        this.status = status;
-    }   
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
 }
 
-export const getToken = () => localStorage.getItem('token');
-export const setToken = (token: string) => localStorage.setItem('token', token);
-export const clearToken = () => localStorage.removeItem('token');
+export const getToken = () => localStorage.getItem("token");
+export const setToken = (token: string) => localStorage.setItem("token", token);
+export const clearToken = () => localStorage.removeItem("token");
 
-export async function api<T>(path: string, options: RequestInit = {}): Promise<T> { 
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-    };
+// The auth provider registers a function here, to run when the session is no longer valid
+let unauthorizedHandler: (() => void) | null = null;
 
-    const token = getToken();
-    if (token) {
-        headers.Authorization = `Bearer ${token}`;
-    }
-    const res = await fetch(`${API_URL}${path}`, {...options, headers });
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
 
-    if (res.status === 204){
-        return undefined as T;
-    }
+export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
 
-    const data = await res.json().catch(() => null);
+  const token = getToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
-    if (!res.ok) {
-        throw new ApiError(res.status, data?.message || "Something went wrong");
-    }
+  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
 
-    return data as T;
+  // A 401 while holding a token means it expired or is invalid.
+  // (A wrong password on the login form is also a 401, so we skip that route.)
+  if (res.status === 401 && token && !path.startsWith("/api/auth/login")) {
+    clearToken();
+    unauthorizedHandler?.();
+  }
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new ApiError(res.status, data?.message ?? "Something went wrong");
+  }
+
+  return data as T;
 }

@@ -1,11 +1,23 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { api, clearToken, getToken, setToken } from "../lib/api";
+import {
+  api,
+  clearToken,
+  getToken,
+  setToken,
+  setUnauthorizedHandler,
+} from "../lib/api";
 import type { User } from "../types";
 import { AuthContext } from "./auth-context";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(() => getToken() !== null);
+
+  // If any request comes back 401, drop the user so ProtectedRoute redirects to login
+  useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   useEffect(() => {
     if (!getToken()) {
