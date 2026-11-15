@@ -6,6 +6,7 @@ import type { CategoryTotal, Expense, ExpenseFilters } from "../types";
 import ExpenseList from "../components/ExpenseList";
 import ExpenseForm from "../components/ExpenseForm";
 import ExpenseFiltersBar from "../components/ExpenseFilters";
+import SummaryChart from "../components/SummaryChart";
 
 const NO_FILTERS: ExpenseFilters = { month: "", category: "" };
 
@@ -115,6 +116,15 @@ export default function DashboardPage() {
           onSaved={handleSaved}
           onCancel={editing ? () => setEditing(null) : undefined}
         />
+
+                <ExpenseForm
+          key={editing?.id ?? "new"}
+          expense={editing}
+          onSaved={handleSaved}
+          onCancel={editing ? () => setEditing(null) : undefined}
+        />
+
+        <SummaryChart summary={summary} />
 
         <ExpenseFiltersBar
           filters={filters}
