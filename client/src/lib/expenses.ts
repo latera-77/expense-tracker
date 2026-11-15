@@ -11,3 +11,10 @@ export const createExpense = (input: ExpenseInput) =>
 
 export const deleteExpense = (id: number) =>
   api<void>(`/api/expenses/${id}`, { method: "DELETE" });
+
+
+export const updateExpense = (id: number, input: ExpenseInput) =>
+  api<Expense>(`/api/expenses/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });

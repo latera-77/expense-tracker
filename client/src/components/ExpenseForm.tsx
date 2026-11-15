@@ -1,20 +1,23 @@
 import { useState, type FormEvent } from "react";
 import { ApiError } from "../lib/api";
-import { createExpense } from "../lib/expenses";
+import { createExpense, updateExpense } from "../lib/expenses";
 import type { Expense } from "../types";
 
-// Today's date in the user's local timezone, as YYYY-MM-DD
 const today = () => new Date().toLocaleDateString("en-CA");
 
 type Props = {
-  onCreated: (expense: Expense) => void;
+  expense?: Expense | null; // present = edit mode, absent = add mode
+  onSaved: (expense: Expense) => void;
+  onCancel?: () => void;
 };
 
-export default function ExpenseForm({ onCreated }: Props) {
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [note, setNote] = useState("");
-  const [date, setDate] = useState(today);
+export default function ExpenseForm({ expense, onSaved, onCancel }: Props) {
+  const [amount, setAmount] = useState(expense?.amount ?? "");
+  const [category, setCategory] = useState(expense?.category ?? "");
+  const [note, setNote] = useState(expense?.note ?? "");
+  const [date, setDate] = useState(() =>
+    expense ? expense.date.slice(0, 10) : today()
+  );
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,17 +27,25 @@ export default function ExpenseForm({ onCreated }: Props) {
     setSubmitting(true);
 
     try {
-      const expense = await createExpense({
+      const input = {
         amount: Number(amount),
         category,
-        note: note.trim() || undefined,
+        note: note.trim(),
         date,
-      });
-      onCreated(expense);
-      setAmount("");
-      setCategory("");
-      setNote("");
-      setDate(today());
+      };
+
+      const saved = expense
+        ? await updateExpense(expense.id, input)
+        : await createExpense(input);
+
+      onSaved(saved);
+
+      if (!expense) {
+        setAmount("");
+        setCategory("");
+        setNote("");
+        setDate(today());
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not reach the server");
     } finally {
@@ -44,7 +55,7 @@ export default function ExpenseForm({ onCreated }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 rounded bg-white p-4 shadow">
-      <h2 className="font-semibold">Add expense</h2>
+      <h2 className="font-semibold">{expense ? "Edit expense" : "Add expense"}</h2>
 
       {error && (
         <p className="rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>
@@ -87,13 +98,24 @@ export default function ExpenseForm({ onCreated }: Props) {
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-      >
-        {submitting ? "Adding..." : "Add expense"}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
+        >
+          {submitting ? "Saving..." : expense ? "Save changes" : "Add expense"}
+        </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded border px-4 py-2"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }

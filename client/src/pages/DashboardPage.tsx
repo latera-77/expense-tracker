@@ -6,9 +6,14 @@ import type { Expense } from "../types";
 import ExpenseList from "../components/ExpenseList";
 import ExpenseForm from "../components/ExpenseForm";
 
+function sortExpenses(list: Expense[]) {
+  return [...list].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+}
+
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [editing, setEditing] = useState<Expense | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -34,12 +39,17 @@ export default function DashboardPage() {
     };
   }, []);
 
-  function handleCreated(expense: Expense) {
+  // Works for both new and edited expenses: drop any old copy, add the saved one
+  function handleSaved(saved: Expense) {
     setExpenses((prev) =>
-      [...prev, expense].sort(
-        (a, b) => b.date.localeCompare(a.date) || b.id - a.id
-      )
+      sortExpenses([...prev.filter((e) => e.id !== saved.id), saved])
     );
+    setEditing(null);
+  }
+
+  function handleEdit(expense: Expense) {
+    setEditing(expense);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleDelete(id: number) {
@@ -49,6 +59,7 @@ export default function DashboardPage() {
     try {
       await deleteExpense(id);
       setExpenses((prev) => prev.filter((e) => e.id !== id));
+      if (editing?.id === id) setEditing(null);
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Could not delete expense");
     }
@@ -72,7 +83,12 @@ export default function DashboardPage() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-4 p-4">
-        <ExpenseForm onCreated={handleCreated} />
+        <ExpenseForm
+          key={editing?.id ?? "new"}
+          expense={editing}
+          onSaved={handleSaved}
+          onCancel={editing ? () => setEditing(null) : undefined}
+        />
 
         {loading && <p>Loading...</p>}
         {loadError && (
@@ -82,7 +98,11 @@ export default function DashboardPage() {
           <p className="rounded bg-red-50 p-2 text-sm text-red-700">{actionError}</p>
         )}
         {!loading && !loadError && (
-          <ExpenseList expenses={expenses} onDelete={handleDelete} />
+          <ExpenseList
+            expenses={expenses}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
         )}
       </main>
     </div>
